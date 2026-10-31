@@ -1,0 +1,6 @@
+# Packages allowed to run install scripts. The design system is installed from its GitHub repo and
+# builds its dist/ folder when it's installed; pnpm wants the exact version here, so update this line
+# along with the version in package.json.
+allowBuilds:
+  design-system@git+ssh://git@github.com/snkoski/design-system.git#cf378ae6023c577a3684361a6c661f3974826d42: true
+  esbuild: true

@@ -1,0 +1,40 @@
+/* The page around the tool. The tool's own styles are in cross-stitch.css. */
+body {
+  margin: 0;
+}
+
+/* Keeps fixed and layered things from the design system in their own stacking context */
+#root {
+  isolation: isolate;
+}
+
+.app {
+  display: grid;
+  gap: var(--space-8);
+  max-width: 120rem;
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-4);
+}
+
+@media (min-width: 40em) {
+  .app {
+    padding-inline: var(--space-8);
+  }
+}
+
+.app__header {
+  display: grid;
+  gap: var(--space-2);
+  max-width: 40rem;
+}
+
+.app__header h1 {
+  margin: 0;
+  font-size: var(--text-heading-lg);
+  line-height: 1.2;
+}
+
+.app__header p {
+  margin: 0;
+  color: var(--ink-muted);
+}

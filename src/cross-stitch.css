@@ -1,0 +1,213 @@
+/* Cross stitch: controls beside a chart. */
+@layer components {
+  .cross-stitch {
+    display: grid;
+    gap: var(--space-8);
+    align-items: start;
+    color: var(--ink);
+    font-family: var(--font-sans);
+  }
+
+  @media (min-width: 64em) {
+    .cross-stitch {
+      grid-template-columns: 20rem minmax(0, 1fr);
+    }
+  }
+
+  .cross-stitch__controls {
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  .cross-stitch__group {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  .cross-stitch__legend {
+    padding: 0;
+    margin-block-end: var(--space-1);
+    font-size: var(--text-heading-sm);
+    font-weight: 600;
+  }
+
+  .cross-stitch__meta,
+  .cross-stitch__note {
+    color: var(--ink-muted);
+    font-size: var(--text-small);
+    font-weight: 400;
+  }
+
+  .cross-stitch__note {
+    margin: 0;
+  }
+
+  /* A label, its value, and the slider under them */
+  .cross-stitch__range {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-1) var(--space-3);
+    font-weight: 600;
+  }
+  .cross-stitch__range output {
+    font-variant-numeric: tabular-nums;
+    font-weight: 400;
+    color: var(--ink-muted);
+  }
+  .cross-stitch__range input {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: var(--target-min);
+    margin: 0;
+    accent-color: var(--action);
+  }
+
+  .cross-stitch__select {
+    display: grid;
+    gap: var(--space-1);
+    font-weight: 600;
+  }
+  .cross-stitch__select select {
+    min-height: var(--control-md);
+    padding-inline: var(--space-3);
+    border: var(--border-thin) solid var(--border-strong);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 400;
+  }
+
+  /* The file input is hidden, and the label drawn as a secondary Button takes the click */
+  .cross-stitch__file {
+    justify-self: start;
+    position: relative;
+  }
+  .cross-stitch__file input,
+  .cross-stitch__swatch input,
+  .cross-stitch__picker input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .cross-stitch__file:has(input:focus-visible) .button {
+    outline: var(--focus-width) solid var(--focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  .cross-stitch__photo {
+    display: block;
+    max-width: 100%;
+    max-height: 10rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .cross-stitch__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  /* The legend: one chip per color, with its symbol and how many stitches use it */
+  .cross-stitch__palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  .cross-stitch__swatch {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: var(--space-1);
+    min-width: 2.75rem;
+    padding: var(--space-1);
+    border: var(--border-thick) solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-small);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  .cross-stitch__swatch:has(input:checked) {
+    border-color: var(--ink);
+  }
+  .cross-stitch__swatch:has(input:focus-visible) {
+    outline: var(--focus-width) solid var(--focus);
+    outline-offset: var(--focus-offset);
+  }
+  .cross-stitch__chip {
+    display: grid;
+    place-items: center;
+    width: 2rem;
+    height: 2rem;
+    border: var(--border-thin) solid var(--border-strong);
+    border-radius: var(--radius-xs);
+    font-weight: 600;
+  }
+  /* The eraser: bare fabric, crossed out */
+  .cross-stitch__chip[data-eraser] {
+    background:
+      linear-gradient(to top right, transparent calc(50% - 1px), var(--ink) 50%, transparent calc(50% + 1px)),
+      var(--surface);
+  }
+
+  .cross-stitch__picker {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--control-sm);
+    padding-inline: var(--space-3);
+    border: var(--border-thick) solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-small);
+    font-weight: 600;
+  }
+  .cross-stitch__picker:has(input:focus-visible) {
+    outline: var(--focus-width) solid var(--focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  .cross-stitch__chart {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr); /* text wraps to the visible width; a wide canvas scrolls */
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  /* Big patterns scroll, rather than squeezing the stitches */
+  .cross-stitch__canvas {
+    display: block;
+    max-width: none;
+    touch-action: none; /* a finger drags stitches, not the page */
+    cursor: crosshair;
+  }
+  .cross-stitch__canvas[data-floating] {
+    cursor: move;
+  }
+  .cross-stitch__chart:has(.cross-stitch__canvas) {
+    overflow: auto;
+    max-height: 80vh;
+  }
+  .cross-stitch__canvas:focus-visible {
+    outline: var(--focus-width) solid var(--focus);
+    outline-offset: var(--focus-offset);
+  }
+
+  /* Read by screen readers, not shown */
+  .cross-stitch__live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
