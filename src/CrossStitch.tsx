@@ -1,12 +1,16 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, HTMLAttributes, InputHTMLAttributes, KeyboardEvent, PointerEvent as ReactPointerEvent } from "react";
-import { Button, Segment, SegmentedControl, Switch, TextArea } from "design-system";
+import { Button, Input, Segment, SegmentedControl, Switch, TextArea } from "design-system";
+import { chartImage, drawChart, SMALLEST_SYMBOL_STITCH } from "./chart";
 import {
   blankPattern,
   distinctColors,
+  FABRIC_COUNTS,
   fromHex,
   inkFor,
   MAX_COLORS,
+  MAX_SIZE,
+  MIN_SIZE,
   patternFromImage,
   resizePattern,
   rowsFor,
@@ -21,6 +25,8 @@ import {
   toHex,
 } from "./pattern";
 import type { Mask, Pattern, Pixels } from "./pattern";
+import { fileBaseName, MAX_FILE_BYTES, parsePattern, PATTERN_FILE_EXTENSION, PatternFileError, serializePattern } from "./patternFile";
+import { patternToPdf } from "./pdf";
 import { FONTS, heightStep, loadFont, snapHeight, textMask } from "./text";
 import type { Align, Thickness } from "./text";
 import "./cross-stitch.css";
@@ -43,13 +49,20 @@ interface Photo {
   name: string;
 }
 
-const [MIN_SIZE, MAX_SIZE] = [5, 200];
 /** How many pixels across a photo is read at: plenty for 200 stitches, small enough to stay quick */
 const PHOTO_WIDTH = 800;
-/** The fabric between stitches */
-const FABRIC = "rgb(251 250 246)";
-const FABRIC_COUNTS = [11, 14, 16, 18];
 const HISTORY = 100;
+
+/** Hands a file to the browser to download */
+function download(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  // Safari starts the download after this click returns, so the URL has to outlive it
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 /** A slider with its label and its value. Only the words name it, so a screen reader doesn't read the number twice. */
 function Range({ label, value, shown = String(value), ...props }: { label: string; value: number; shown?: string } & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "type">) {
@@ -99,6 +112,8 @@ export function CrossStitch({ defaultColumns = 40, defaultRows = 30, className, 
   const [cursor, setCursor] = useState<[number, number]>([0, 0]);
   const [focused, setFocused] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [name, setName] = useState("");
+  const [fileError, setFileError] = useState<string | null>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const stroke = useRef<{ last: [number, number] } | null>(null);
 
@@ -211,6 +226,56 @@ export function CrossStitch({ defaultColumns = 40, defaultRows = 30, className, 
   const removePhoto = () => {
     if (photo) URL.revokeObjectURL(photo.url);
     setPhoto(null);
+  };
+
+  // --- Saving, and opening what was saved ---
+  const showFileError = (message: string) => {
+    setFileError(message);
+    setAnnouncement(message);
+  };
+
+  const savePdf = () => {
+    setFileError(null);
+    download(new Blob([patternToPdf(pattern, { name, fabricCount })], { type: "application/pdf" }), `${fileBaseName(name)}.pdf`);
+    setAnnouncement("Saved the pattern as a PDF.");
+  };
+
+  const saveImage = async () => {
+    setFileError(null);
+    try {
+      download(await chartImage(pattern, showSymbols), `${fileBaseName(name)}.png`);
+      setAnnouncement("Saved the chart as an image.");
+    } catch {
+      showFileError("The image couldn't be made. Try saving a PDF instead.");
+    }
+  };
+
+  const savePatternFile = () => {
+    setFileError(null);
+    download(new Blob([serializePattern({ pattern, name, fabricCount })], { type: "application/json" }), `${fileBaseName(name)}${PATTERN_FILE_EXTENSION}`);
+    setAnnouncement("Saved the pattern file.");
+  };
+
+  const openPatternFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      if (file.size > MAX_FILE_BYTES) throw new PatternFileError("This file is too big to be a pattern file. Choose a file saved from this tool.");
+      const saved = parsePattern(await file.text());
+      // An opened pattern stands on its own, so it stops following any photo. Undo goes back to what was here.
+      removePhoto();
+      commit(saved.pattern);
+      setName(saved.name);
+      setFabricCount(saved.fabricCount);
+      setSelected(0);
+      setCursor([0, 0]);
+      setTextAt(null);
+      setFileError(null);
+      setAnnouncement(`Opened ${saved.name || file.name}: ${saved.pattern.columns} stitches across and ${saved.pattern.rows} down.`);
+    } catch (error) {
+      showFileError(error instanceof PatternFileError ? error.message : "This file couldn't be read. Try choosing it again.");
+    }
   };
 
   const recolor = (hex: string) => {
@@ -336,7 +401,7 @@ export function CrossStitch({ defaultColumns = 40, defaultRows = 30, className, 
     const element = canvas.current;
     const context = element?.getContext("2d");
     if (!element || !context) return;
-    const { columns, rows, cells, palette } = pattern;
+    const { columns, rows } = pattern;
     const [width, height] = [columns * stitchSize + 1, rows * stitchSize + 1];
     const density = window.devicePixelRatio || 1;
     element.width = Math.round(width * density);
@@ -345,48 +410,13 @@ export function CrossStitch({ defaultColumns = 40, defaultRows = 30, className, 
     element.style.height = `${height}px`;
     context.setTransform(density, 0, 0, density, 0, 0);
 
-    context.fillStyle = FABRIC;
-    context.fillRect(0, 0, width, height);
-    const symbols = showSymbols && stitchSize >= 10;
-    context.font = `600 ${Math.round(stitchSize * 0.62)}px system-ui, sans-serif`;
-    context.textAlign = "center";
-    context.textBaseline = "middle";
-    const drawStitch = (column: number, row: number, cell: number | null) => {
-      const [x, y] = [column * stitchSize, row * stitchSize];
-      context.fillStyle = cell === null ? FABRIC : toCss(palette[cell]!);
-      context.fillRect(x, y, stitchSize, stitchSize);
-      if (symbols && cell !== null) {
-        context.fillStyle = inkFor(palette[cell]!);
-        context.fillText(SYMBOLS[cell]!, x + stitchSize / 2, y + stitchSize / 2 + 1);
-      }
-    };
-    cells.forEach((cell, index) => {
-      if (cell !== null) drawStitch(index % columns, Math.floor(index / columns), cell);
+    drawChart(context, pattern, stitchSize, showSymbols, (drawStitch) => {
+      // Floating text, drawn as it will be stitched
+      floating?.cells.forEach((on, index) => {
+        const [column, row] = [textLeft + (index % floating.columns), textTop + Math.floor(index / floating.columns)];
+        if (on && column >= 0 && row >= 0 && column < columns && row < rows) drawStitch(column, row, selected);
+      });
     });
-    // Floating text, drawn as it will be stitched
-    floating?.cells.forEach((on, index) => {
-      const [column, row] = [textLeft + (index % floating.columns), textTop + Math.floor(index / floating.columns)];
-      if (on && column >= 0 && row >= 0 && column < columns && row < rows) drawStitch(column, row, selected);
-    });
-
-    // Grid lines, with every tenth darker, as printed charts have, for counting
-    for (const [count, horizontal] of [[columns, false], [rows, true]] as const) {
-      for (let i = 0; i <= count; i++) {
-        const tenth = i % 10 === 0;
-        context.strokeStyle = tenth ? "rgb(0 0 0 / 55%)" : "rgb(0 0 0 / 16%)";
-        context.lineWidth = tenth ? 1.5 : 1;
-        context.beginPath();
-        const at = i * stitchSize + 0.5;
-        if (horizontal) {
-          context.moveTo(0, at);
-          context.lineTo(width, at);
-        } else {
-          context.moveTo(at, 0);
-          context.lineTo(at, height);
-        }
-        context.stroke();
-      }
-    }
 
     // Floating text has a dashed edge, black over white, so it shows on any color
     if (floating) {
@@ -418,6 +448,34 @@ export function CrossStitch({ defaultColumns = 40, defaultRows = 30, className, 
   return (
     <div {...rest} className={className ? `cross-stitch ${className}` : "cross-stitch"}>
       <div className="cross-stitch__controls">
+        <fieldset className="cross-stitch__group">
+          <legend className="cross-stitch__legend">Save and open</legend>
+          <Input label="Pattern name" description="Used for the file name and the title of the PDF." value={name} onValueChange={setName} maxLength={80} />
+          <div className="cross-stitch__buttons">
+            <Button size="sm" onClick={savePdf}>
+              Save as PDF
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => void saveImage()}>
+              Save as image
+            </Button>
+          </div>
+          <p className="cross-stitch__note">The PDF has the chart and color key, ready to print and stitch from. The image is just the chart, to share or look at.</p>
+          <div className="cross-stitch__buttons">
+            <Button variant="secondary" size="sm" onClick={savePatternFile}>
+              Save pattern file
+            </Button>
+            <label className="cross-stitch__file">
+              <input type="file" accept=".json,application/json" onChange={(event) => void openPatternFile(event)} />
+              <span className="button" data-variant="secondary" data-size="sm" data-shape="rectangle">
+                Open a pattern file
+              </span>
+            </label>
+          </div>
+          <p className="cross-stitch__note">A pattern file is the only kind you can open here and keep editing. Nothing is saved until you save a file, so save one before you close this page.</p>
+          {floating && <p className="cross-stitch__note">The text floating on the chart isn't part of the pattern yet, so it won't be saved. Add it to the pattern first.</p>}
+          {fileError && <p className="cross-stitch__error">{fileError}</p>}
+        </fieldset>
+
         <fieldset className="cross-stitch__group">
           <legend className="cross-stitch__legend">Size</legend>
           <Range label="Stitches across" min={MIN_SIZE} max={MAX_SIZE} value={pattern.columns} onChange={(event) => changeColumns(Number(event.target.value))} />
@@ -621,7 +679,7 @@ export function CrossStitch({ defaultColumns = 40, defaultRows = 30, className, 
         <fieldset className="cross-stitch__group">
           <legend className="cross-stitch__legend">Chart</legend>
           <Range label="Zoom" min={6} max={32} value={stitchSize} shown={`${stitchSize}px`} onChange={(event) => setStitchSize(Number(event.target.value))} />
-          <Switch checked={showSymbols} onCheckedChange={setShowSymbols} description="Shown from a zoom of 10px.">
+          <Switch checked={showSymbols} onCheckedChange={setShowSymbols} description={`Shown from a zoom of ${SMALLEST_SYMBOL_STITCH}px.`}>
             Show symbols
           </Switch>
           <div className="cross-stitch__buttons">

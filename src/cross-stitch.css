@@ -46,6 +46,13 @@
     margin: 0;
   }
 
+  .cross-stitch__error {
+    margin: 0;
+    color: var(--danger);
+    font-size: var(--text-small);
+    font-weight: 600;
+  }
+
   /* A label, its value, and the slider under them */
   .cross-stitch__range {
     display: grid;
@@ -97,6 +104,10 @@
     margin: 0;
     opacity: 0;
     cursor: pointer;
+  }
+  /* A span, unlike a real button, doesn't size its padding and border inside its height unless told to */
+  .cross-stitch__file .button {
+    box-sizing: border-box;
   }
   .cross-stitch__file:has(input:focus-visible) .button {
     outline: var(--focus-width) solid var(--focus);

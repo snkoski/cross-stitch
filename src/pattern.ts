@@ -35,6 +35,12 @@ export const SYMBOLS = [
 /** The most colors a photo can be reduced to; one symbol each */
 export const MAX_COLORS = SYMBOLS.length;
 
+/** The smallest and largest a chart can be, in stitches, each way */
+export const [MIN_SIZE, MAX_SIZE] = [5, 200];
+
+/** Stitches per inch of the fabrics to choose from */
+export const FABRIC_COUNTS = [11, 14, 16, 18];
+
 export function blankPattern(columns: number, rows: number, palette: Rgb[] = STARTER_PALETTE): Pattern {
   return { columns, rows, cells: Array<number | null>(columns * rows).fill(null), palette };
 }
