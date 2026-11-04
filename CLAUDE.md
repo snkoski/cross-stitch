@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-A cross-stitch pattern maker: a static React app (Vite, TypeScript), deployed to GitHub Pages at shawnkoski.com/cross-stitch/. See `README.md` for commands, the design system dependency, and deploying, and `todo.md` for ideas and what's next. Keep `todo.md` up to date as items land.
+A cross-stitch pattern maker: a static React app (Vite, TypeScript), deployed to GitHub Pages at shawnkoski.com/cross-stitch/. See `README.md` for commands, the design system dependency, and deploying, `todo.md` for ideas and what's next, and `revisit.md` for loose ends in work that's landed: checks not done yet, known problems, and why things were built the way they were. Keep both up to date as items land or get settled.
 
 It started as an experiment in the design system's Storybook and moved here on 2026-10-31.
 
@@ -13,6 +13,9 @@ src/CrossStitch.tsx            the tool: controls, the chart canvas, pointer and
 src/cross-stitch.css           the tool's styles, using the design system's tokens
 src/pattern.ts                 the pattern, editing it, and turning a photo into one (no DOM; unit tested)
 src/text.ts                    fonts, and text as stitches (the layout is unit tested; drawing needs a browser)
+src/chart.ts                   drawing the chart on a canvas: on the page, and as a saved image
+src/pdf.ts                     the pattern as a PDF, written by hand with no library (no DOM; unit tested)
+src/patternFile.ts             the pattern file: saving as JSON, and checking a file before opening it (no DOM; unit tested)
 src/*.test.ts                  unit tests, in Node
 src/*.browser.test.tsx         the whole tool in Chromium, with axe
 ```

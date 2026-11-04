@@ -1,10 +1,10 @@
 # Cross stitch pattern maker
 
-Design cross-stitch patterns in the browser: draw on a grid, add words in a choice of fonts, or turn a photo into a chart with as few thread colors as you like. Each color gets a symbol and a stitch count, as printed charts do.
+Design cross-stitch patterns in the browser: draw on a grid, add words in a choice of fonts, or turn a photo into a chart with as few thread colors as you like. Each color gets a symbol and a stitch count, as printed charts do. Save a PDF to print and stitch from, an image to share, or a pattern file to open again and keep editing.
 
 Live at [shawnkoski.com/cross-stitch](https://shawnkoski.com/cross-stitch/).
 
-Ideas and what's next: [todo.md](todo.md).
+Ideas and what's next: [todo.md](todo.md). Loose ends and decisions in work that's landed: [revisit.md](revisit.md).
 
 ## Running it
 
